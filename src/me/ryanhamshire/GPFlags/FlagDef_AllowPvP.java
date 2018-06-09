@@ -5,7 +5,9 @@ import java.util.Collection;
 import me.ryanhamshire.GriefPrevention.EntityEventHandler;
 import me.ryanhamshire.GriefPrevention.events.PreventPvPEvent;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -94,28 +96,27 @@ public class FlagDef_AllowPvP extends FlagDefinition
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
     public void onEntityDamagebyBlock (EntityDamageByBlockEvent event)
     {
-        Material type = event.getDamager().getType();
+            WorldSettings settings = this.settingsManager.Get(event.getEntity().getWorld());
+            if(!settings.pvpRequiresClaimFlag) return;
 
-        WorldSettings settings = this.settingsManager.Get(event.getEntity().getWorld());
-        if(!settings.pvpRequiresClaimFlag) return;
+            //we care only for bed bombing
+            if(event.getCause() != DamageCause.BLOCK_EXPLOSION) return;
 
-        //If it is null it was a bed explosion
-        if(type != null) return;
-
-        Entity effected = event.getEntity();
-        boolean setForCancellation = false;
-        if(effected instanceof Player)
-        {
-            setForCancellation = true;
-        }
-        else if(effected instanceof Tameable)
-        {
-            Tameable pet = (Tameable) effected;
-            if (pet.isTamed() && pet.getOwner() != null) {
+            //protect only those that need to be protected
+            Entity effected = event.getEntity();
+            boolean setForCancellation = false;
+            if(effected instanceof Player)
+            {
                 setForCancellation = true;
             }
-        }
-        event.setCancelled(setForCancellation);
+            else if(effected instanceof Tameable)
+            {
+                Tameable pet = (Tameable) effected;
+                if (pet.isTamed() && pet.getOwner() != null) {
+                    setForCancellation = true;
+                }
+            }
+            event.setCancelled(setForCancellation);
     }
 
 
@@ -174,6 +175,7 @@ public class FlagDef_AllowPvP extends FlagDefinition
     private void handleEntityDamageEvent(EntityDamageByEntityEvent event, boolean sendErrorMessagesToPlayers)
     {
         boolean setForCancellation = false;
+        //we want to cancel only events that involve tamed animals and players
         if(event.getEntityType() != EntityType.PLAYER)
         {
             Entity entity = event.getEntity();
@@ -183,10 +185,11 @@ public class FlagDef_AllowPvP extends FlagDefinition
                 if(!pet.isTamed() || pet.getOwner() == null) return;
                 else setForCancellation = true;
             }
-        }
+        } else if(event.getEntityType() == EntityType.PLAYER)
+            setForCancellation = true;
 
         Entity damager = event.getDamager();
-        if(damager == null)  return;
+        if(damager == null) return;
 
         //if not in a no-pvp world, we don't care
         WorldSettings settings = this.settingsManager.Get(damager.getWorld());
@@ -202,8 +205,20 @@ public class FlagDef_AllowPvP extends FlagDefinition
             }
         }
 
-        //Lingering are treated separatedly
-        if(damager.getType() != EntityType.PLAYER && damager.getType()!= EntityType.AREA_EFFECT_CLOUD && damager.getType()!= EntityType.PRIMED_TNT) return;
+        //player placed tnt shouldn't harm other players
+        if(damager.getType() == EntityType.PRIMED_TNT){
+            TNTPrimed tnt = (TNTPrimed)damager;
+            //is null when redstone activated, allows for desert temple traps
+            if(tnt.getSource() == null || tnt.getSource().getType() != EntityType.PLAYER)
+                return;
+            else setForCancellation = true;
+        }
+
+
+        //If the damager is not a player, let him harm.
+        if(damager.getType() != EntityType.PLAYER && damager.getType() != EntityType.PRIMED_TNT) return;
+
+
 
         //if damager and damaged a flagged-for-pvp area, allow
         Flag flag = this.GetFlagInstanceAtLocation(damager.getLocation(), null);
@@ -214,10 +229,6 @@ public class FlagDef_AllowPvP extends FlagDefinition
 
         //Inko: Let players self harm
         if(damager == event.getEntity()) return;
-
-        //Now cancel also if the damaged entity is a player
-        if(event.getEntityType() == EntityType.PLAYER)
-            setForCancellation = true;
 
         event.setCancelled(setForCancellation);
         if (projectile != null) projectile.remove();
