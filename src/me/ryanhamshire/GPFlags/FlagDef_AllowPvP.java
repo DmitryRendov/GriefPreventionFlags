@@ -208,8 +208,8 @@ public class FlagDef_AllowPvP extends FlagDefinition
         //player placed tnt shouldn't harm other players
         if(damager.getType() == EntityType.PRIMED_TNT){
             TNTPrimed tnt = (TNTPrimed)damager;
-            //is null when redstone activated, allows for desert temple traps
-            if(tnt.getSource() == null || tnt.getSource().getType() != EntityType.PLAYER)
+            //is null when redstone activated, allows for desert temple traps. Also let players self harm
+            if(tnt.getSource() == null || tnt.getSource().getType() != EntityType.PLAYER || (tnt.getSource()).equals(event.getEntity()))
                 return;
             else setForCancellation = true;
         }
