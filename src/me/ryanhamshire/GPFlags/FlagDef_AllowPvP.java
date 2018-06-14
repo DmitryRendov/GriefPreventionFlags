@@ -183,6 +183,7 @@ public class FlagDef_AllowPvP extends FlagDefinition
             {
                 Tameable pet = (Tameable)entity;
                 if(!pet.isTamed() || pet.getOwner() == null) return;
+                else if(pet.getOwner() == event.getDamager()) return;
                 else setForCancellation = true;
             }
         } else if(event.getEntityType() == EntityType.PLAYER)

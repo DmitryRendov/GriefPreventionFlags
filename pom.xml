@@ -4,7 +4,7 @@
 
     <groupId>me.ryanhamshire</groupId>
     <artifactId>GPFlags</artifactId>
-    <version>4.5.4</version>
+    <version>4.5.5</version>
     <packaging>jar</packaging>
     <name>GriefPreventionFlags</name>
     <description>Administrative Flags fror GriefPrevention Claims.</description>
@@ -33,7 +33,7 @@
             <artifactId>mcMMO</artifactId>
             <version>1.5.01-SNAPSHOT</version>
             <type>jar</type>
-            <scope>compile</scope>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
